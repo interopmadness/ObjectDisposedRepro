@@ -45,6 +45,7 @@ namespace ObjectDisposedReproDotNet48
                                             FileNameStar = fileName,
                                             Size = size
                                         }.ToString();
+                                        ctx.Response.ContentLength64 = size;
                                         await resultStream.CopyToAsync(ctx.Response.OutputStream, 81920, cancelToken);
                                     }
                                 }

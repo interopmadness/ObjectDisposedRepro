@@ -18,19 +18,19 @@ namespace ObjectDisposedReproDotNet48
         private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
 
         // UrlPrefix for the server
-        private static string UrlPrefix => "https://+:18093/";
+        private static string UrlPrefix => "http://+:18093/";
 
         // This property creates a valid hostname, given the UrlPrefix
         // E.g. https://+:18093/ --> https://myhost.contoso.com:18093/ if this machine's hostname+FQDN is mymachine.contoso.com
         // You can change how the hostname is determined in the method GetThisHostName()
-        private static Uri RequestBaseUrl
+        internal static Uri RequestBaseUrl
         {
             get
             {
                 var wildcardUrlPrefixRegex = new Regex(@"^http[s]?:\/\/(\+|\*)");
 
                 var urlHostNamePlaceHolder = "30fe441eb9694d3fa7b827402a6851de";
-                var urlPrefixWithPlaceholder = wildcardUrlPrefixRegex.Replace(UrlPrefix, $"https://{urlHostNamePlaceHolder}");
+                var urlPrefixWithPlaceholder = wildcardUrlPrefixRegex.Replace(UrlPrefix, $"http://{urlHostNamePlaceHolder}");
                 var builder = new UriBuilder(urlPrefixWithPlaceholder)
                 {
                     Host = GetThisHostName()
@@ -74,6 +74,10 @@ namespace ObjectDisposedReproDotNet48
 
                     SendRequest();
 
+//                    DumbClient.Go();
+
+                    //if (attempts > 1)
+                    //    break;
                 }
                 CancellationTokenSource.Token.WaitHandle.WaitOne();
             }
@@ -89,7 +93,7 @@ namespace ObjectDisposedReproDotNet48
         private static void SendRequest()
         {
             var serverInstance = new SimpleClient(RequestBaseUrl, CancellationTokenSource.Token);
-            using (var responseStream = serverInstance.GetContentStream()) { }
+            using (var responseStream = serverInstance.GetContentStream2()) { }
         }
 
         // Returns hostname of this machine. Change accordingly, if insufficient for your setup

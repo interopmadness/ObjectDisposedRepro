@@ -18,7 +18,7 @@ namespace ObjectDisposedReproDotNet48
         private readonly ServiceCollection m_serviceCollection = new ServiceCollection();
 
         // For IHttpClientFactory
-        private static string HttpClientKey => $"HttpClient_c0f58122315c4e879c6cf1e2568e4ffa";
+        private static string HttpClientKey => $"HttpClient_c0f58122315c4e879c6cf1e2568e4ffab";
 
         private readonly CancellationToken m_cancelToken;
 
@@ -39,6 +39,7 @@ namespace ObjectDisposedReproDotNet48
 
         public MemoryStream GetContentStream()
         {
+#pragma warning disable CS0168 // Variable is declared but never used
             try
             {
                 var response = SendRequest(() =>
@@ -50,10 +51,10 @@ namespace ObjectDisposedReproDotNet48
 
                 using (response)
                 {
-                    var stream = GetResponseStream(response);
+                    using var stream = GetResponseStream(response);
                     var memStream = new MemoryStream();
                     stream.CopyTo(memStream);
-                    GC.KeepAlive(response);
+                    //GC.KeepAlive(response);
                     memStream.Position = 0;
                     return memStream;
                 }
@@ -62,9 +63,38 @@ namespace ObjectDisposedReproDotNet48
             {
                 return new MemoryStream();
             }
+            catch (Exception ex)
+            {
+                throw;
+            }
+#pragma warning restore CS0168 // Variable is declared but never used
         }
 
-        #region Helpers
+        public MemoryStream GetContentStream2()
+        {
+#pragma warning disable CS0168 // Variable is declared but never used
+            try
+            {
+                var response = SendRequest2(() =>
+                {
+                    var request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+                    request.Headers.CacheControl = new CacheControlHeaderValue() { NoCache = true };
+                    request.Headers.ConnectionClose = true;
+                    return request;
+                });
+
+                return response;
+            }
+            catch (TaskCanceledException)
+            {
+                return new MemoryStream();
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+#pragma warning restore CS0168 // Variable is declared but never used
+        }
 
         private HttpClient GetClient()
             => m_serviceCollection
@@ -79,6 +109,34 @@ namespace ObjectDisposedReproDotNet48
                 response.Dispose();
                 throw new InvalidOperationException("Received invalid response.");
             }
+        }
+
+        private MemoryStream SendRequest2(Func<HttpRequestMessage> requestFactory)
+        {
+            using (var request = requestFactory())
+            {
+                using (var httpClient = GetClient())
+                {
+//                    var httpClient = GetClient();
+                    var response = httpClient
+                        .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, m_cancelToken)
+                        .ConfigureAwait(false)
+                        .GetAwaiter()
+                        .GetResult();
+
+                    EnsureValidResponse(response);
+                    using (response)
+                    {
+                        using var stream = GetResponseStream(response);
+                        var memStream = new MemoryStream();
+                        stream.CopyTo(memStream);
+                        //GC.KeepAlive(response);
+                        memStream.Position = 0;
+                        return memStream;
+                    }
+                }
+            }
+
         }
 
         private HttpResponseMessage SendRequest(Func<HttpRequestMessage> requestFactory)
@@ -108,8 +166,6 @@ namespace ObjectDisposedReproDotNet48
                    .ConfigureAwait(false)
                    .GetAwaiter()
                    .GetResult();
-
-        #endregion Helpers
     }
 }
 #pragma warning restore IDE0090 // Use 'new(...)'
